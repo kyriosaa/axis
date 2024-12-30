@@ -40,20 +40,12 @@ void calibrateGyro()
     gyroZOffset /= samples;
 
     Serial.println("Gyro Calibration Complete:");
-    Serial.print("X Offset: ");
-    Serial.println(gyroXOffset);
-    Serial.print("Y Offset: ");
-    Serial.println(gyroYOffset);
-    Serial.print("Z Offset: ");
-    Serial.println(gyroZOffset);
 }
 
 void setup()
 {
-    Serial.begin(9600);
-
-    while (!Serial)
-        delay(10);
+    Serial.begin(9600);  // for Serial Monitor
+    Serial1.begin(9600); // for Bluetooth HC-06
 
     if (!mpu.begin())
     {
@@ -103,12 +95,13 @@ void loop()
     float angleYMapped = mapToRange(angleY, -90, 90, -10000, 10000);
     float angleZMapped = mapToRange(angleZ, -90, 90, -10000, 10000);
 
-    Serial.print("Mapped X: ");
-    Serial.print(angleXMapped);
-    Serial.print(" Mapped Y: ");
-    Serial.print(angleYMapped);
-    Serial.print(" Mapped Z: ");
-    Serial.println(angleZMapped);
+    // transmit bluetooth
+    Serial1.print("X:");
+    Serial1.print(angleXMapped);
+    Serial1.print(",Y:");
+    Serial1.print(angleYMapped);
+    Serial1.print(",Z:");
+    Serial1.println(angleZMapped);
 
     delay(200);
 }

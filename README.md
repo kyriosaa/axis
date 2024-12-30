@@ -11,7 +11,7 @@
 - **Motion Control -** The RC car is controlled using a gyroscopic device strapped to your hand.
 - **Bluetooth Communication -** The RC car and gyroscopic device communicates through bluetooth for seamless real-time control and data transmission.
 
-## Hardware Modules
+## Hardware Components
 
 - **Arduino Uno R3 -** RC car microcontroller
 - **ESP32-WROOM-32 -** Glove microcontroller
