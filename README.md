@@ -14,10 +14,10 @@
 ## Hardware Components
 
 - **Arduino Uno R3 -** RC car microcontroller
-- **ESP32-WROOM-32 -** Glove microcontroller
+- **ESP32 -** Glove microcontroller
 - **MPU6050 -** Accelerometer/Gyroscope
 - **L298N -** Motor driver
-- **HC-05 -** Bluetooth receiver
+- **HM-10 -** Bluetooth receiver
 - **DC Motors**
 - **RC Car Chassis**
 - **3.7V 3400mAh 18650 Li-ion Batteries**

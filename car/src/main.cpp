@@ -1,12 +1,35 @@
 #include <Arduino.h>
-#include <IRremote.hpp>
+#include <SoftwareSerial.h>
 
-const int RemotePin = 8;
+// Define SoftwareSerial pins for HM-10
+SoftwareSerial HM10(10, 11); // RX, TX (connect TX of HM-10 to pin 10, RX to pin 11)
 
+// Motor control pins
 int in1 = 3;
 int in2 = 5;
 int in3 = 6;
 int in4 = 9;
+
+// Bluetooth data storage
+float angleX = 0; // Received X value
+float angleY = 0; // Received Y value
+
+bool atMode = false; // Flag to toggle between AT command mode and normal mode
+
+// Function to parse Bluetooth data in the format "X:<value>,Y:<value>"
+bool parseBluetoothData(String data, float &x, float &y)
+{
+  int xIndex = data.indexOf("X:");
+  int yIndex = data.indexOf(",Y:");
+
+  if (xIndex == -1 || yIndex == -1)
+    return false; // Invalid format
+
+  x = data.substring(xIndex + 2, yIndex).toFloat();
+  y = data.substring(yIndex + 3).toFloat();
+
+  return true; // Successfully parsed
+}
 
 void Forward()
 {
@@ -55,57 +78,87 @@ void Stop()
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(9600); // For communication with Serial Monitor
+  HM10.begin(9600);   // For communication with HM-10
 
-  // prints the program
-  Serial.println(F("START " __FILE__ " from " __DATE__ "\r\nUsing library version " VERSION_IRREMOTE));
-
-  IrReceiver.begin(RemotePin, DISABLE_LED_FEEDBACK);
-
+  // Motor pins setup
   pinMode(in1, OUTPUT);
   pinMode(in2, OUTPUT);
   pinMode(in3, OUTPUT);
   pinMode(in4, OUTPUT);
+
+  Serial.println("Enter 'AT' in Serial Monitor to enable AT command mode.");
 }
 
 void loop()
 {
-  if (IrReceiver.available())
+  // Check for input from Serial Monitor
+  if (Serial.available())
   {
-    IrReceiver.initDecodedIRData();
-    IrReceiver.decodeHash();
-    IrReceiver.resume(); // early enable receiving of the next IR frame
+    String serialInput = Serial.readStringUntil('\n');
+    serialInput.trim();
 
-    Serial.print("Received command: ");
-    Serial.println(IrReceiver.decodedIRData.decodedRawData, HEX);
+    if (serialInput == "AT")
+    {
+      atMode = !atMode; // Toggle AT command mode
+      Serial.println(atMode ? "AT mode enabled. Enter AT commands:" : "AT mode disabled.");
+    }
+    else if (atMode)
+    {
+      // Send AT command to HM-10
+      HM10.println(serialInput);
+      delay(100);
 
-    unsigned long receivedCommand = IrReceiver.decodedIRData.decodedRawData;
+      // Read and print the HM-10 response
+      if (HM10.available())
+      {
+        String response = HM10.readStringUntil('\n');
+        Serial.println("HM-10 Response: " + response);
+      }
+    }
+  }
 
-    if (receivedCommand == 0x3D9AE3F7) // UP button
+  // If not in AT mode, handle Bluetooth motor control
+  if (!atMode && HM10.available())
+  {
+    String data = HM10.readStringUntil('\n');           // Read until newline
+    Serial.println("Bluetooth Data Received: " + data); // Debug: print received data
+
+    // Parse Bluetooth data
+    if (parseBluetoothData(data, angleX, angleY))
     {
-      Forward();
-    }
-    else if (receivedCommand == 0x1BC0157B) // DOWN button
-    {
-      Backward();
-    }
-    else if (receivedCommand == 0x8C22657B) // LEFT button
-    {
-      Left();
-    }
-    else if (receivedCommand == 0x449E79F) // RIGHT button
-    {
-      Right();
-    }
-    else if (receivedCommand == 0x488F3CBB) // STOP button
-    {
-      Stop();
+      Serial.print("Parsed angleX: ");
+      Serial.print(angleX); // Debug: print parsed angleX
+      Serial.print(" angleY: ");
+      Serial.println(angleY); // Debug: print parsed angleY
+
+      // Control car based on Bluetooth input
+      if (angleY < 0)
+      {
+        Backward();
+      }
+      else if (angleY > 0)
+      {
+        Forward();
+      }
+
+      if (angleX < 0)
+      {
+        Left();
+      }
+      else if (angleX > 0)
+      {
+        Right();
+      }
+
+      if (angleX == 0 && angleY == 0)
+      {
+        Stop();
+      }
     }
     else
     {
-      Serial.println("Unknown command");
+      Serial.println("Failed to parse Bluetooth data"); // Debug: print failure message
     }
-    delay(200);
-    IrReceiver.resume();
   }
 }
