@@ -1,8 +1,8 @@
-# GCRC: A Gyro-Controlled RC Car
+# GRCC: A Gyroscopically Remote Controlled Car
 
 ## About
 
-- GCRC is a project I made that utilizes gyroscopic data from an MPU6050 module and sends it via ESP32 bluetooth to an RC car that's controlled by an Arduino board.
+- GRCC is a project I made that utilizes gyroscopic data from an MPU6050 module and sends it via ESP32 bluetooth to an RC car that's controlled by an Arduino board.
 - C++
 
 ## Features
