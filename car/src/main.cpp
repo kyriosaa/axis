@@ -1,164 +1,161 @@
 #include <Arduino.h>
-#include <SoftwareSerial.h>
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEScan.h>
+#include <BLEAdvertisedDevice.h>
 
-// Define SoftwareSerial pins for HM-10
-SoftwareSerial HM10(10, 11); // RX, TX (connect TX of HM-10 to pin 10, RX to pin 11)
+int in1 = 25;
+int in2 = 26;
+int in3 = 27;
+int in4 = 14;
 
-// Motor control pins
-int in1 = 3;
-int in2 = 5;
-int in3 = 6;
-int in4 = 9;
+float angleX = 0, angleY = 0;
+bool connected = false;
 
-// Bluetooth data storage
-float angleX = 0; // Received X value
-float angleY = 0; // Received Y value
+// callback to handle notifs
+class MyClientCallback : public BLEClientCallbacks
+{
+  void onConnect(BLEClient *client)
+  {
+    connected = true;
+    Serial.println("Connected to ESP32 Server");
+  }
 
-bool atMode = false; // Flag to toggle between AT command mode and normal mode
+  void onDisconnect(BLEClient *client)
+  {
+    connected = false;
+    Serial.println("Disconnected from ESP32 Server");
+  }
+};
 
-// Function to parse Bluetooth data in the format "X:<value>,Y:<value>"
 bool parseBluetoothData(String data, float &x, float &y)
 {
   int xIndex = data.indexOf("X:");
   int yIndex = data.indexOf(",Y:");
-
   if (xIndex == -1 || yIndex == -1)
-    return false; // Invalid format
-
+    return false;
   x = data.substring(xIndex + 2, yIndex).toFloat();
   y = data.substring(yIndex + 3).toFloat();
-
-  return true; // Successfully parsed
+  return true;
 }
 
 void Forward()
 {
-  Serial.println("Moving Forward");
-  digitalWrite(in1, HIGH);
-  digitalWrite(in2, LOW);
-  digitalWrite(in3, HIGH);
-  digitalWrite(in4, LOW);
+  ledcWrite(0, 255);
+  ledcWrite(1, 0);
+  ledcWrite(2, 255);
+  ledcWrite(3, 0);
 }
 
 void Backward()
 {
-  Serial.println("Moving Backward");
-  digitalWrite(in1, LOW);
-  digitalWrite(in2, HIGH);
-  digitalWrite(in3, LOW);
-  digitalWrite(in4, HIGH);
+  ledcWrite(0, 0);
+  ledcWrite(1, 255);
+  ledcWrite(2, 0);
+  ledcWrite(3, 255);
 }
 
 void Left()
 {
-  Serial.println("Turning Left");
-  digitalWrite(in1, HIGH);
-  digitalWrite(in2, LOW);
-  digitalWrite(in3, LOW);
-  digitalWrite(in4, LOW);
+  ledcWrite(0, 255);
+  ledcWrite(1, 0);
+  ledcWrite(2, 0);
+  ledcWrite(3, 0);
 }
 
 void Right()
 {
-  Serial.println("Turning Right");
-  digitalWrite(in1, LOW);
-  digitalWrite(in2, LOW);
-  digitalWrite(in3, HIGH);
-  digitalWrite(in4, LOW);
+  ledcWrite(0, 0);
+  ledcWrite(1, 0);
+  ledcWrite(2, 255);
+  ledcWrite(3, 0);
 }
 
 void Stop()
 {
-  Serial.println("Stopping");
-  digitalWrite(in1, LOW);
-  digitalWrite(in2, LOW);
-  digitalWrite(in3, LOW);
-  digitalWrite(in4, LOW);
+  ledcWrite(0, 0);
+  ledcWrite(1, 0);
+  ledcWrite(2, 0);
+  ledcWrite(3, 0);
 }
 
 void setup()
 {
-  Serial.begin(9600); // For communication with Serial Monitor
-  HM10.begin(9600);   // For communication with HM-10
+  Serial.begin(9600);
 
-  // Motor pins setup
-  pinMode(in1, OUTPUT);
-  pinMode(in2, OUTPUT);
-  pinMode(in3, OUTPUT);
-  pinMode(in4, OUTPUT);
+  // motor PWM setup
+  // all 5kHz, 8-bit resolution
+  ledcSetup(0, 5000, 8);
+  ledcAttachPin(in1, 0);
+  ledcSetup(1, 5000, 8);
+  ledcAttachPin(in2, 1);
+  ledcSetup(2, 5000, 8);
+  ledcAttachPin(in3, 2);
+  ledcSetup(3, 5000, 8);
+  ledcAttachPin(in4, 3);
 
-  Serial.println("Enter 'AT' in Serial Monitor to enable AT command mode.");
+  // init BLE
+  BLEDevice::init("ESP32_Client");
+  BLEClient *client = BLEDevice::createClient();
+  client->setClientCallbacks(new MyClientCallback());
+
+  // connect to server
+  BLEAddress serverAddress("20:43:A8:65:52:1E");
+  if (client->connect(serverAddress))
+  {
+    Serial.println("Connected to server");
+    BLERemoteService *service = client->getService("0000ffe0-0000-1000-8000-00805f9b34fb");
+    if (service)
+    {
+      BLERemoteCharacteristic *characteristic = service->getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
+      if (characteristic)
+      {
+        characteristic->registerForNotify([](BLERemoteCharacteristic *characteristic, uint8_t *data, size_t length, bool isNotify)
+                                          {
+          String receivedData = String((char *)data).substring(0, length);
+          if (parseBluetoothData(receivedData, angleX, angleY))
+          {
+            Serial.printf("Parsed: X=%.2f, Y=%.2f\n", angleX, angleY);
+            if (angleY < 0)
+            {
+              Serial.println("Moving Backward");
+              Backward();
+            }
+            else if (angleY > 0)
+            {
+              Serial.println("Moving Forward");
+              Forward();
+            }
+            else if (angleX < 0)
+            {
+              Serial.println("Turning Left");
+              Left();
+            }
+            else if (angleX > 0)
+            {
+              Serial.println("Turning Right");
+              Right();
+            }
+            else
+            {
+              Serial.println("Stopping");
+              Stop();
+            }
+          }
+          else
+          {
+            Serial.println("Failed to connect to server");
+          } });
+      }
+    }
+  }
 }
 
 void loop()
 {
-  // Check for input from Serial Monitor
-  if (Serial.available())
+  if (!connected)
   {
-    String serialInput = Serial.readStringUntil('\n');
-    serialInput.trim();
-
-    if (serialInput == "AT")
-    {
-      atMode = !atMode; // Toggle AT command mode
-      Serial.println(atMode ? "AT mode enabled. Enter AT commands:" : "AT mode disabled.");
-    }
-    else if (atMode)
-    {
-      // Send AT command to HM-10
-      HM10.println(serialInput);
-      delay(100);
-
-      // Read and print the HM-10 response
-      if (HM10.available())
-      {
-        String response = HM10.readStringUntil('\n');
-        Serial.println("HM-10 Response: " + response);
-      }
-    }
+    Serial.println("Attempting to reconnect...");
+    BLEDevice::getScan()->start(5, false);
   }
-
-  // If not in AT mode, handle Bluetooth motor control
-  if (!atMode && HM10.available())
-  {
-    String data = HM10.readStringUntil('\n');           // Read until newline
-    Serial.println("Bluetooth Data Received: " + data); // Debug: print received data
-
-    // Parse Bluetooth data
-    if (parseBluetoothData(data, angleX, angleY))
-    {
-      Serial.print("Parsed angleX: ");
-      Serial.print(angleX); // Debug: print parsed angleX
-      Serial.print(" angleY: ");
-      Serial.println(angleY); // Debug: print parsed angleY
-
-      // Control car based on Bluetooth input
-      if (angleY < 0)
-      {
-        Backward();
-      }
-      else if (angleY > 0)
-      {
-        Forward();
-      }
-
-      if (angleX < 0)
-      {
-        Left();
-      }
-      else if (angleX > 0)
-      {
-        Right();
-      }
-
-      if (angleX == 0 && angleY == 0)
-      {
-        Stop();
-      }
-    }
-    else
-    {
-      Serial.println("Failed to parse Bluetooth data"); // Debug: print failure message
-    }
-  }
-}
+  delay(2000);

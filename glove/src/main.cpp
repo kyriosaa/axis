@@ -5,31 +5,27 @@
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 
-// MPU6050 object
 Adafruit_MPU6050 mpu;
-
-// BLE Server and Characteristic
 BLEServer *pServer = NULL;
 BLECharacteristic *pCharacteristic = NULL;
 
-// Connection status
 bool deviceConnected = false;
 
-// Variables for angles
+// angle variables
 float angleX = 0, angleY = 0, angleZ = 0;
 float gyroXOffset = 0, gyroYOffset = 0, gyroZOffset = 0;
-float alpha = 0.5; // smoothing factor
 float gyroXFiltered = 0, gyroYFiltered = 0, gyroZFiltered = 0;
+float alpha = 0.5; // smoothing
 unsigned long previousTime = 0;
 
-// Function for mapping values to a range
+// mapping values to a range
 float mapToRange(float value, float minInput, float maxInput, float minOutput, float maxOutput)
 {
     value = constrain(value, minInput, maxInput);
     return (value - minInput) * (maxOutput - minOutput) / (maxInput - minInput) + minOutput;
 }
 
-// Function to calibrate the gyroscope
+// calibrating the gyroscope
 void calibrateGyro()
 {
     int samples = 100;
@@ -48,7 +44,7 @@ void calibrateGyro()
     Serial.println("Gyro Calibration Complete!");
 }
 
-// Callback class for BLE server events
+// callback for BLE server events
 class MyServerCallbacks : public BLEServerCallbacks
 {
     void onConnect(BLEServer *pServer)
@@ -61,7 +57,7 @@ class MyServerCallbacks : public BLEServerCallbacks
     {
         deviceConnected = false;
         Serial.println("Device disconnected!");
-        BLEDevice::startAdvertising(); // Restart advertising
+        BLEDevice::startAdvertising();
     }
 };
 
@@ -69,15 +65,13 @@ void setup()
 {
     Serial.begin(9600);
 
-    // Initialize BLE
+    // init BLE
     BLEDevice::init("ESP32_Gyro_Sender");
     pServer = BLEDevice::createServer();
     pServer->setCallbacks(new MyServerCallbacks());
 
-    // Create BLE Service
     BLEService *pService = pServer->createService("0000ffe0-0000-1000-8000-00805f9b34fb");
 
-    // Create BLE Characteristic
     pCharacteristic = pService->createCharacteristic(
         "0000ffe1-0000-1000-8000-00805f9b34fb",
         BLECharacteristic::PROPERTY_NOTIFY);
@@ -87,7 +81,7 @@ void setup()
     pAdvertising->start();
     Serial.println("BLE Advertising started!");
 
-    // Initialize MPU6050
+    // init MPU6050
     if (!mpu.begin())
     {
         Serial.println("Failed to find MPU6050 chip!");
@@ -99,14 +93,13 @@ void setup()
     mpu.setGyroRange(MPU6050_RANGE_250_DEG);
     mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
 
-    // Calibrate the gyroscope
+    // calibrate gyro
     calibrateGyro();
     previousTime = millis();
 }
 
 void loop()
 {
-    // Get gyroscope data
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
 
@@ -114,7 +107,7 @@ void loop()
     float deltaTime = (currentTime - previousTime) / 1000.0;
     previousTime = currentTime;
 
-    // Calibrate and filter gyroscope data
+    // filter gyro data
     float gyroXCalibrated = g.gyro.x - gyroXOffset;
     float gyroYCalibrated = g.gyro.y - gyroYOffset;
     float gyroZCalibrated = g.gyro.z - gyroZOffset;
@@ -123,16 +116,15 @@ void loop()
     gyroYFiltered = alpha * gyroYCalibrated + (1 - alpha) * gyroYFiltered;
     gyroZFiltered = alpha * gyroZCalibrated + (1 - alpha) * gyroZFiltered;
 
-    // Calculate angles by integrating angular velocity
     angleX += gyroXFiltered * deltaTime;
     angleY += gyroYFiltered * deltaTime;
     angleZ += gyroZFiltered * deltaTime;
 
-    // Map angles to a suitable range
+    // map angles to a specific range
     float angleXMapped = mapToRange(angleX, -90, 90, -10000, 10000);
     float angleYMapped = mapToRange(angleY, -90, 90, -10000, 10000);
 
-    // Transmit data via BLE
+    // transmit data
     if (deviceConnected)
     {
         String data = "X:" + String(angleXMapped) + ",Y:" + String(angleYMapped) + "\n";

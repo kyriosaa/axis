@@ -2,7 +2,7 @@
 
 ## About
 
-- GRCC is a project I made that utilizes gyroscopic data from an MPU6050 module and sends it via ESP32 bluetooth to an RC car that's controlled by an Arduino board.
+- GRCC is a project I made that utilizes gyroscopic data from an MPU6050 module and sends it via bluetooth to an RC car.
 - C++
 
 ## Features
@@ -13,11 +13,9 @@
 
 ## Hardware Components
 
-- **Arduino Uno R3 -** RC car microcontroller
-- **ESP32 -** Glove microcontroller
+- **ESP32 -** Car & Glove microcontroller
 - **MPU6050 -** Accelerometer/Gyroscope
 - **L298N -** Motor driver
-- **HM-10 -** Bluetooth receiver
 - **DC Motors**
 - **RC Car Chassis**
 - **3.7V 3400mAh 18650 Li-ion Batteries**
