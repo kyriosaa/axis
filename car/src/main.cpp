@@ -116,22 +116,23 @@ void setup()
           if (parseBluetoothData(receivedData, angleX, angleY))
           {
             Serial.printf("Parsed: X=%.2f, Y=%.2f\n", angleX, angleY);
-            if (angleY < 0)
+            if (angleY > 100)
+            {
+              Serial.println("Moving Forward");
+              Forward();
+              
+            }
+            else if (angleY < -100)
             {
               Serial.println("Moving Backward");
               Backward();
             }
-            else if (angleY > 0)
-            {
-              Serial.println("Moving Forward");
-              Forward();
-            }
-            else if (angleX < 0)
+            else if (angleX < -100)
             {
               Serial.println("Turning Left");
               Left();
             }
-            else if (angleX > 0)
+            else if (angleX > 100)
             {
               Serial.println("Turning Right");
               Right();
@@ -159,3 +160,4 @@ void loop()
     BLEDevice::getScan()->start(5, false);
   }
   delay(2000);
+}

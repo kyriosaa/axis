@@ -65,6 +65,11 @@ void setup()
 {
     Serial.begin(9600);
 
+    // init I2C
+    int sdaPin = 2;
+    int sclPin = 15;
+    Wire.begin(sdaPin, sclPin);
+
     // init BLE
     BLEDevice::init("ESP32_Gyro_Sender");
     pServer = BLEDevice::createServer();
