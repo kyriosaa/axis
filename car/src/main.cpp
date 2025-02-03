@@ -4,28 +4,50 @@
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
 
-int in1 = 25;
-int in2 = 26;
-int in3 = 27;
-int in4 = 14;
+int IN1 = 25;
+int IN2 = 26;
+int IN3 = 27;
+int IN4 = 14;
+
+#define WHEEL_VELOCITY 255;
 
 float angleX = 0, angleY = 0;
 bool connected = false;
 
 // callback to handle notifs
-class MyClientCallback : public BLEClientCallbacks
+class MyClientCallback final : public BLEClientCallbacks // final derived class
 {
-  void onConnect(BLEClient *client)
+public: // public indicate functions that can be called from outside of class, this should only apply to functions, variables should always be private/protected
+  // call on creating variable with this class
+  MyClientCallback() : m_isConnected(false) // m_isConnected = false on init
   {
-    connected = true;
+    Serial.println("Not connected to ESP32 Server");
+  }
+  ~MyClientCallback()
+  {
+    m_isConnected = false;
+  }
+
+  void onConnect(BLEClient *client) override
+  {
+    m_isConnected = true;
     Serial.println("Connected to ESP32 Server");
   }
 
-  void onDisconnect(BLEClient *client)
+  void onDisconnect(BLEClient *client) override
   {
-    connected = false;
+    m_isConnected = false;
     Serial.println("Disconnected from ESP32 Server");
   }
+
+  // a read function for 'm_isConnected' as the variable is private and can't be accessed from outside of class
+  const bool isConnected()
+  {
+    return m_isConnected;
+  }
+
+private:
+  bool m_isConnected;
 };
 
 bool parseBluetoothData(String data, float &x, float &y)
@@ -39,44 +61,93 @@ bool parseBluetoothData(String data, float &x, float &y)
   return true;
 }
 
-void Forward()
+enum E_WHEEL : uint8_t
 {
-  ledcWrite(0, 255);
-  ledcWrite(1, 0);
-  ledcWrite(2, 255);
-  ledcWrite(3, 0);
+  WHEEL_RIGHT_FRONT = 0,
+  WHEEL_RIGHT_BACK,
+  WHEEL_LEFT_FRONT,
+  WHEEL_LEFT_BACK,
+  WHEEL_MAX
+};
+
+enum E_MOVE_DIR : uint8_t
+{
+  MOVE_FWRD = 0,
+  MOVE_BWRD,
+  MOVE_LEFT,
+  MOVE_RGHT,
+  MOVE_STOP,
+};
+
+void actMove(E_MOVE_DIR dir)
+{
+  switch (dir)
+  {
+  case MOVE_FWRD:
+    ledcWrite(WHEEL_RIGHT_FRONT, 255);
+    ledcWrite(WHEEL_RIGHT_BACK, 0);
+    ledcWrite(WHEEL_LEFT_FRONT, 255);
+    ledcWrite(WHEEL_LEFT_BACK, 0);
+    break;
+  case MOVE_BWRD:
+    ledcWrite(WHEEL_RIGHT_FRONT, 0);
+    ledcWrite(WHEEL_RIGHT_BACK, 255);
+    ledcWrite(WHEEL_LEFT_FRONT, 0);
+    ledcWrite(WHEEL_LEFT_BACK, 255);
+    break;
+  case MOVE_LEFT:
+    ledcWrite(WHEEL_RIGHT_FRONT, 255);
+    ledcWrite(WHEEL_RIGHT_BACK, 0);
+    ledcWrite(WHEEL_LEFT_FRONT, 0);
+    ledcWrite(WHEEL_LEFT_BACK, 0);
+    break;
+  case MOVE_RGHT:
+    ledcWrite(WHEEL_RIGHT_FRONT, 0);
+    ledcWrite(WHEEL_RIGHT_BACK, 0);
+    ledcWrite(WHEEL_LEFT_FRONT, 255);
+    ledcWrite(WHEEL_LEFT_BACK, 0);
+    break;
+  case MOVE_STOP:
+  default:
+    ledcWrite(WHEEL_RIGHT_FRONT, 0);
+    ledcWrite(WHEEL_RIGHT_BACK, 0);
+    ledcWrite(WHEEL_LEFT_FRONT, 0);
+    ledcWrite(WHEEL_LEFT_BACK, 0);
+    break;
+  }
 }
 
-void Backward()
+void judgeMove(int angleX, int angleY)
 {
-  ledcWrite(0, 0);
-  ledcWrite(1, 255);
-  ledcWrite(2, 0);
-  ledcWrite(3, 255);
-}
+  E_MOVE_DIR dir;
 
-void Left()
-{
-  ledcWrite(0, 255);
-  ledcWrite(1, 0);
-  ledcWrite(2, 0);
-  ledcWrite(3, 0);
-}
+  if (angleY > 100)
+  {
+    Serial.println("Moving Forward");
+    dir = MOVE_FWRD;
+  }
+  else if (angleY < -100)
+  {
+    Serial.println("Moving Backward");
+    dir = MOVE_BWRD;
+  }
+  else if (angleX < -100)
+  {
+    Serial.println("Turning Left");
+    dir = MOVE_LEFT;
+  }
+  else if (angleX > 100)
+  {
+    Serial.println("Turning Right");
+    dir = MOVE_RGHT;
+  }
+  else
+  {
+    Serial.println("Stopping");
+    dir = MOVE_STOP;
+  }
 
-void Right()
-{
-  ledcWrite(0, 0);
-  ledcWrite(1, 0);
-  ledcWrite(2, 255);
-  ledcWrite(3, 0);
-}
-
-void Stop()
-{
-  ledcWrite(0, 0);
-  ledcWrite(1, 0);
-  ledcWrite(2, 0);
-  ledcWrite(3, 0);
+  actMove(dir);
 }
 
 void setup()
@@ -86,13 +157,13 @@ void setup()
   // motor PWM setup
   // all 5kHz, 8-bit resolution
   ledcSetup(0, 5000, 8);
-  ledcAttachPin(in1, 0);
+  ledcAttachPin(IN1, 0);
   ledcSetup(1, 5000, 8);
-  ledcAttachPin(in2, 1);
+  ledcAttachPin(IN2, 1);
   ledcSetup(2, 5000, 8);
-  ledcAttachPin(in3, 2);
+  ledcAttachPin(IN3, 2);
   ledcSetup(3, 5000, 8);
-  ledcAttachPin(in4, 3);
+  ledcAttachPin(IN4, 3);
 
   // init BLE
   BLEDevice::init("ESP32_Client");
@@ -116,32 +187,7 @@ void setup()
           if (parseBluetoothData(receivedData, angleX, angleY))
           {
             Serial.printf("Parsed: X=%.2f, Y=%.2f\n", angleX, angleY);
-            if (angleY > 100)
-            {
-              Serial.println("Moving Forward");
-              Forward();
-              
-            }
-            else if (angleY < -100)
-            {
-              Serial.println("Moving Backward");
-              Backward();
-            }
-            else if (angleX < -100)
-            {
-              Serial.println("Turning Left");
-              Left();
-            }
-            else if (angleX > 100)
-            {
-              Serial.println("Turning Right");
-              Right();
-            }
-            else
-            {
-              Serial.println("Stopping");
-              Stop();
-            }
+            judgeMove(angleX, angleY);
           }
           else
           {

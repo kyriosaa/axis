@@ -115,15 +115,12 @@ void loop()
     // filter gyro data
     float gyroXCalibrated = g.gyro.x - gyroXOffset;
     float gyroYCalibrated = g.gyro.y - gyroYOffset;
-    float gyroZCalibrated = g.gyro.z - gyroZOffset;
 
     gyroXFiltered = alpha * gyroXCalibrated + (1 - alpha) * gyroXFiltered;
     gyroYFiltered = alpha * gyroYCalibrated + (1 - alpha) * gyroYFiltered;
-    gyroZFiltered = alpha * gyroZCalibrated + (1 - alpha) * gyroZFiltered;
 
     angleX += gyroXFiltered * deltaTime;
     angleY += gyroYFiltered * deltaTime;
-    angleZ += gyroZFiltered * deltaTime;
 
     // map angles to a specific range
     float angleXMapped = mapToRange(angleX, -90, 90, -10000, 10000);
