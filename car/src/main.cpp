@@ -14,8 +14,8 @@ int IN4 = 14;
 
 #define IS_MOVING_FORWARD(angleY) ((angleY) > 100)
 #define IS_MOVING_BACKWARD(angleY) ((angleY) < -100)
-#define IS_MOVING_LEFT(angleX) ((angleY) < -100)
-#define IS_MOVING_RIGHT(angleX) ((angleY) > 100)
+#define IS_TURNING_LEFT(angleX) ((angleX) < -100)
+#define IS_TURNING_RIGHT(angleX) ((angleX) > 100)
 
 float angleX = 0, angleY = 0;
 bool connected = false;
@@ -140,11 +140,11 @@ void judgeMove(int angleX, int angleY)
   {
     dir = MOVE_BWRD;
   }
-  else if (IS_MOVING_LEFT(angleX))
+  else if (IS_TURNING_LEFT(angleX))
   {
     dir = MOVE_LEFT;
   }
-  else if (IS_MOVING_RIGHT(angleX))
+  else if (IS_TURNING_RIGHT(angleX))
   {
     dir = MOVE_RGHT;
   }
