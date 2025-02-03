@@ -1,8 +1,8 @@
-# GRCC: A Gyroscopically Remote Controlled Car
+# Axis: A Gyroscope-Controlled RC Car
 
 ## About
 
-- GRCC is a project I made that utilizes gyroscopic data from an MPU6050 module and sends it via bluetooth to an RC car.
+- Axis is a project I made that utilizes gyroscopic data from an MPU6050 module and sends it via bluetooth to an RC car.
 - C++
 
 ## Features
