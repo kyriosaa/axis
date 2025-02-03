@@ -9,7 +9,13 @@ int IN2 = 26;
 int IN3 = 27;
 int IN4 = 14;
 
-#define WHEEL_VELOCITY 255;
+#define WHEEL_ON 255
+#define WHEEL_OFF 0
+
+#define IS_MOVING_FORWARD(angleY) ((angleY) > 100)
+#define IS_MOVING_BACKWARD(angleY) ((angleY) < -100)
+#define IS_MOVING_LEFT(angleX) ((angleY) < -100)
+#define IS_MOVING_RIGHT(angleX) ((angleY) > 100)
 
 float angleX = 0, angleY = 0;
 bool connected = false;
@@ -84,35 +90,40 @@ void actMove(E_MOVE_DIR dir)
   switch (dir)
   {
   case MOVE_FWRD:
-    ledcWrite(WHEEL_RIGHT_FRONT, 255);
-    ledcWrite(WHEEL_RIGHT_BACK, 0);
-    ledcWrite(WHEEL_LEFT_FRONT, 255);
-    ledcWrite(WHEEL_LEFT_BACK, 0);
+    Serial.println("Moving Forward");
+    ledcWrite(WHEEL_RIGHT_FRONT, WHEEL_ON);
+    ledcWrite(WHEEL_RIGHT_BACK, WHEEL_OFF);
+    ledcWrite(WHEEL_LEFT_FRONT, WHEEL_ON);
+    ledcWrite(WHEEL_LEFT_BACK, WHEEL_OFF);
     break;
   case MOVE_BWRD:
-    ledcWrite(WHEEL_RIGHT_FRONT, 0);
-    ledcWrite(WHEEL_RIGHT_BACK, 255);
-    ledcWrite(WHEEL_LEFT_FRONT, 0);
-    ledcWrite(WHEEL_LEFT_BACK, 255);
+    Serial.println("Moving Backward");
+    ledcWrite(WHEEL_RIGHT_FRONT, WHEEL_OFF);
+    ledcWrite(WHEEL_RIGHT_BACK, WHEEL_ON);
+    ledcWrite(WHEEL_LEFT_FRONT, WHEEL_OFF);
+    ledcWrite(WHEEL_LEFT_BACK, WHEEL_ON);
     break;
   case MOVE_LEFT:
-    ledcWrite(WHEEL_RIGHT_FRONT, 255);
-    ledcWrite(WHEEL_RIGHT_BACK, 0);
-    ledcWrite(WHEEL_LEFT_FRONT, 0);
-    ledcWrite(WHEEL_LEFT_BACK, 0);
+    Serial.println("Turning Left");
+    ledcWrite(WHEEL_RIGHT_FRONT, WHEEL_ON);
+    ledcWrite(WHEEL_RIGHT_BACK, WHEEL_OFF);
+    ledcWrite(WHEEL_LEFT_FRONT, WHEEL_OFF);
+    ledcWrite(WHEEL_LEFT_BACK, WHEEL_OFF);
     break;
   case MOVE_RGHT:
-    ledcWrite(WHEEL_RIGHT_FRONT, 0);
-    ledcWrite(WHEEL_RIGHT_BACK, 0);
-    ledcWrite(WHEEL_LEFT_FRONT, 255);
-    ledcWrite(WHEEL_LEFT_BACK, 0);
+    Serial.println("Turning Right");
+    ledcWrite(WHEEL_RIGHT_FRONT, WHEEL_OFF);
+    ledcWrite(WHEEL_RIGHT_BACK, WHEEL_OFF);
+    ledcWrite(WHEEL_LEFT_FRONT, WHEEL_ON);
+    ledcWrite(WHEEL_LEFT_BACK, WHEEL_OFF);
     break;
   case MOVE_STOP:
   default:
-    ledcWrite(WHEEL_RIGHT_FRONT, 0);
-    ledcWrite(WHEEL_RIGHT_BACK, 0);
-    ledcWrite(WHEEL_LEFT_FRONT, 0);
-    ledcWrite(WHEEL_LEFT_BACK, 0);
+    Serial.println("Stopping");
+    ledcWrite(WHEEL_RIGHT_FRONT, WHEEL_OFF);
+    ledcWrite(WHEEL_RIGHT_BACK, WHEEL_OFF);
+    ledcWrite(WHEEL_LEFT_FRONT, WHEEL_OFF);
+    ledcWrite(WHEEL_LEFT_BACK, WHEEL_OFF);
     break;
   }
 }
@@ -121,29 +132,24 @@ void judgeMove(int angleX, int angleY)
 {
   E_MOVE_DIR dir;
 
-  if (angleY > 100)
+  if (IS_MOVING_FORWARD(angleY))
   {
-    Serial.println("Moving Forward");
     dir = MOVE_FWRD;
   }
-  else if (angleY < -100)
+  else if (IS_MOVING_BACKWARD(angleY))
   {
-    Serial.println("Moving Backward");
     dir = MOVE_BWRD;
   }
-  else if (angleX < -100)
+  else if (IS_MOVING_LEFT(angleX))
   {
-    Serial.println("Turning Left");
     dir = MOVE_LEFT;
   }
-  else if (angleX > 100)
+  else if (IS_MOVING_RIGHT(angleX))
   {
-    Serial.println("Turning Right");
     dir = MOVE_RGHT;
   }
   else
   {
-    Serial.println("Stopping");
     dir = MOVE_STOP;
   }
 
