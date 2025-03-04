@@ -1,5 +1,7 @@
 # Axis: A Gyroscope-Controlled RC Car
 
+Video link: https://youtu.be/8u_cHXa7rbY
+
 ## About
 
 - Axis is a project I made that utilizes gyroscopic data from an MPU6050 module and sends it via Bluetooth to an RC car.
@@ -24,5 +26,3 @@
 - **1.5V AA Alkaline Batteries (or equivalent)**
 
 ![alt text](https://github.com/kyriosaa/axis/blob/main/images/axis2.JPG "Axis Image 2")
-
-Video link: https://youtu.be/8u_cHXa7rbY
