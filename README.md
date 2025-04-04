@@ -1,3 +1,4 @@
+![alt text](https://github.com/kyriosaa/axis/blob/main/images/axis1.JPG "Axis Image 1")
 # Axis: A Gyroscope-Controlled RC Car
 
 Video link: https://youtu.be/8u_cHXa7rbY
@@ -6,8 +7,6 @@ Video link: https://youtu.be/8u_cHXa7rbY
 
 - Axis is a project I made that utilizes gyroscopic data from an MPU6050 module and sends it via Bluetooth to an RC car.
 - C++
-
-![alt text](https://github.com/kyriosaa/axis/blob/main/images/axis1.JPG "Axis Image 1")
 
 ## Features
 
