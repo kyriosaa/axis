@@ -1,4 +1,4 @@
-![alt text](https://github.com/kyriosaa/axis/blob/main/images/axis1.JPG "Axis Image 1")
+<img src='./images/axis1.JPG' width='100%' >
 # Axis: A Gyroscope-Controlled RC Car
 
 Video link: https://youtu.be/8u_cHXa7rbY
@@ -24,4 +24,4 @@ Video link: https://youtu.be/8u_cHXa7rbY
 - **3.7V 3400mAh 18650 Li-ion Batteries**
 - **1.5V AA Alkaline Batteries (or equivalent)**
 
-![alt text](https://github.com/kyriosaa/axis/blob/main/images/axis2.JPG "Axis Image 2")
+<img src='./images/axis2.JPG' width='100%' >
