@@ -2,7 +2,7 @@
 
 # Axis: A Gyroscope-Controlled RC Car
 
-[Project Demo](https://www.youtube.com/watch?v=8u_cHXa7rbY)
+[Click here for the project demo video!](https://www.youtube.com/watch?v=8u_cHXa7rbY)
 
 ## About
 
