@@ -4,18 +4,40 @@
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
 
-int IN1 = 25;
-int IN2 = 26;
-int IN3 = 27;
-int IN4 = 14;
+// bluetooth config
+#define BLE_CLIENT_NAME     "ESP32_Client"
+#define BLE_SERVER_ADDR     "20:43:A8:65:52:1E"
+#define BLE_SERVICE_UUID    "0000ffe0-0000-1000-8000-00805f9b34fb"
+#define BLE_CHAR_UUID       "0000ffe1-0000-1000-8000-00805f9b34fb"
 
-#define WHEEL_ON 255
-#define WHEEL_OFF 0
+// motor driver
+#define IN1                 25
+#define IN2                 26
+#define IN3                 27
+#define IN4                 14
 
-#define IS_MOVING_FORWARD(angleY) ((angleY) > 100)
-#define IS_MOVING_BACKWARD(angleY) ((angleY) < -100)
-#define IS_TURNING_LEFT(angleX) ((angleX) < -100)
-#define IS_TURNING_RIGHT(angleX) ((angleX) > 100)
+// 255 is the max speed for the wheel spin (kinda like an LED has 0->255)
+#define WHEEL_ON            255
+#define WHEEL_OFF           0
+
+// serial and timing
+#define SERIAL_BAUD_RATE    9600  // i usually use 9600 or 115200
+#define PWM_FREQ            5000
+#define PWM_RESOLUTION      8
+#define RECONNECT_DELAY_MS  2000
+#define BLE_SCAN_SEC        5
+
+// data parsing const
+#define X_PREFIX_LEN        2
+#define Y_PREFIX_LEN        3
+
+// movement
+#define MOVEMENT_THRESHOLD  100
+#define NEGATIVE_THRESHOLD -100
+#define IS_MOVING_FORWARD   (angleY) ((angleY) >  MOVEMENT_THRESHOLD)
+#define IS_MOVING_BACKWARD  (angleY) ((angleY) <  NEGATIVE_THRESHOLD)
+#define IS_TURNING_LEFT     (angleX) ((angleX) <  NEGATIVE_THRESHOLD)
+#define IS_TURNING_RIGHT    (angleX) ((angleX) >  MOVEMENT_THRESHOLD)
 
 float angleX = 0, angleY = 0;
 bool connected = false;
@@ -60,10 +82,11 @@ bool parseBluetoothData(String data, float &x, float &y)
 {
   int xIndex = data.indexOf("X:");
   int yIndex = data.indexOf(",Y:");
+  // -1 means BLE data not found
   if (xIndex == -1 || yIndex == -1)
     return false;
-  x = data.substring(xIndex + 2, yIndex).toFloat();
-  y = data.substring(yIndex + 3).toFloat();
+  x = data.substring(xIndex + X_PREFIX_LEN, yIndex).toFloat();
+  y = data.substring(yIndex + Y_PREFIX_LEN).toFloat();
   return true;
 }
 
@@ -91,39 +114,39 @@ void actMove(E_MOVE_DIR dir)
   {
   case MOVE_FWRD:
     Serial.println("Moving Forward");
-    ledcWrite(WHEEL_RIGHT_FRONT, WHEEL_ON);
-    ledcWrite(WHEEL_RIGHT_BACK, WHEEL_OFF);
-    ledcWrite(WHEEL_LEFT_FRONT, WHEEL_ON);
-    ledcWrite(WHEEL_LEFT_BACK, WHEEL_OFF);
+    ledcWrite(WHEEL_RIGHT_FRONT,  WHEEL_ON);
+    ledcWrite(WHEEL_RIGHT_BACK,   WHEEL_OFF);
+    ledcWrite(WHEEL_LEFT_FRONT,   WHEEL_ON);
+    ledcWrite(WHEEL_LEFT_BACK,    WHEEL_OFF);
     break;
   case MOVE_BWRD:
     Serial.println("Moving Backward");
-    ledcWrite(WHEEL_RIGHT_FRONT, WHEEL_OFF);
-    ledcWrite(WHEEL_RIGHT_BACK, WHEEL_ON);
-    ledcWrite(WHEEL_LEFT_FRONT, WHEEL_OFF);
-    ledcWrite(WHEEL_LEFT_BACK, WHEEL_ON);
+    ledcWrite(WHEEL_RIGHT_FRONT,  WHEEL_OFF);
+    ledcWrite(WHEEL_RIGHT_BACK,   WHEEL_ON);
+    ledcWrite(WHEEL_LEFT_FRONT,   WHEEL_OFF);
+    ledcWrite(WHEEL_LEFT_BACK,    WHEEL_ON);
     break;
   case MOVE_LEFT:
     Serial.println("Turning Left");
-    ledcWrite(WHEEL_RIGHT_FRONT, WHEEL_ON);
-    ledcWrite(WHEEL_RIGHT_BACK, WHEEL_OFF);
-    ledcWrite(WHEEL_LEFT_FRONT, WHEEL_OFF);
-    ledcWrite(WHEEL_LEFT_BACK, WHEEL_OFF);
+    ledcWrite(WHEEL_RIGHT_FRONT,  WHEEL_ON);
+    ledcWrite(WHEEL_RIGHT_BACK,   WHEEL_OFF);
+    ledcWrite(WHEEL_LEFT_FRONT,   WHEEL_OFF);
+    ledcWrite(WHEEL_LEFT_BACK,    WHEEL_OFF);
     break;
   case MOVE_RGHT:
     Serial.println("Turning Right");
-    ledcWrite(WHEEL_RIGHT_FRONT, WHEEL_OFF);
-    ledcWrite(WHEEL_RIGHT_BACK, WHEEL_OFF);
-    ledcWrite(WHEEL_LEFT_FRONT, WHEEL_ON);
-    ledcWrite(WHEEL_LEFT_BACK, WHEEL_OFF);
+    ledcWrite(WHEEL_RIGHT_FRONT,  WHEEL_OFF);
+    ledcWrite(WHEEL_RIGHT_BACK,   WHEEL_OFF);
+    ledcWrite(WHEEL_LEFT_FRONT,   WHEEL_ON);
+    ledcWrite(WHEEL_LEFT_BACK,    WHEEL_OFF);
     break;
   case MOVE_STOP:
   default:
     Serial.println("Stopping");
-    ledcWrite(WHEEL_RIGHT_FRONT, WHEEL_OFF);
-    ledcWrite(WHEEL_RIGHT_BACK, WHEEL_OFF);
-    ledcWrite(WHEEL_LEFT_FRONT, WHEEL_OFF);
-    ledcWrite(WHEEL_LEFT_BACK, WHEEL_OFF);
+    ledcWrite(WHEEL_RIGHT_FRONT,  WHEEL_OFF);
+    ledcWrite(WHEEL_RIGHT_BACK,   WHEEL_OFF);
+    ledcWrite(WHEEL_LEFT_FRONT,   WHEEL_OFF);
+    ledcWrite(WHEEL_LEFT_BACK,    WHEEL_OFF);
     break;
   }
 }
@@ -158,33 +181,34 @@ void judgeMove(int angleX, int angleY)
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(SERIAL_BAUD_RATE); 
 
   // motor PWM setup
   // all 5kHz, 8-bit resolution
-  ledcSetup(0, 5000, 8);
+  // 0, 1, 2, 3 are the PWM channels respectively
+  ledcSetup(0, PWM_FREQ, PWM_RESOLUTION);
   ledcAttachPin(IN1, 0);
-  ledcSetup(1, 5000, 8);
+  ledcSetup(1, PWM_FREQ, PWM_RESOLUTION);
   ledcAttachPin(IN2, 1);
-  ledcSetup(2, 5000, 8);
+  ledcSetup(2, PWM_FREQ, PWM_RESOLUTION);
   ledcAttachPin(IN3, 2);
-  ledcSetup(3, 5000, 8);
+  ledcSetup(3, PWM_FREQ, PWM_RESOLUTION);
   ledcAttachPin(IN4, 3);
 
   // init BLE
-  BLEDevice::init("ESP32_Client");
+  BLEDevice::init(BLE_CLIENT_NAME);
   BLEClient *client = BLEDevice::createClient();
   client->setClientCallbacks(new MyClientCallback());
 
   // connect to server
-  BLEAddress serverAddress("20:43:A8:65:52:1E");
+  BLEAddress serverAddress(BLE_SERVER_ADDR);
   if (client->connect(serverAddress))
   {
     Serial.println("Connected to server");
-    BLERemoteService *service = client->getService("0000ffe0-0000-1000-8000-00805f9b34fb");
+    BLERemoteService *service = client->getService(BLE_SERVICE_UUID);
     if (service)
     {
-      BLERemoteCharacteristic *characteristic = service->getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
+      BLERemoteCharacteristic *characteristic = service->getCharacteristic(BLE_CHAR_UUID);
       if (characteristic)
       {
         characteristic->registerForNotify([](BLERemoteCharacteristic *characteristic, uint8_t *data, size_t length, bool isNotify)
@@ -209,7 +233,7 @@ void loop()
   if (!connected)
   {
     Serial.println("Attempting to reconnect...");
-    BLEDevice::getScan()->start(5, false);
+    BLEDevice::getScan()->start(BLE_SCAN_SEC, false);
   }
-  delay(2000);
+  delay(RECONNECT_DELAY_MS);
 }

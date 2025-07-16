@@ -5,6 +5,32 @@
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 
+// serial config
+#define SERIAL_BAUD_RATE 9600 // i usually do 9600 or 112500
+
+// I2C config
+#define I2C_SDA_PIN         2
+#define I2C_SCL_PIN         15
+
+// bluetooth config
+#define BLE_DEVICE_NAME     "ESP32_Gyro_Sender"
+#define BLE_SERVICE_UUID    "0000ffe0-0000-1000-8000-00805f9b34fb"
+#define BLE_CHAR_UUID       "0000ffe1-0000-1000-8000-00805f9b34fb"
+
+// gyro config
+#define CALIBRATION_SAMPLES 100
+#define CALIBRATION_DELAY   10     // ms
+
+// timing
+#define LOOP_DELAY          200    // ms
+#define MS_CONVERT          1000.0f
+
+// angle mapping
+#define ANGLE_MIN_INPUT    -90.0f
+#define ANGLE_MAX_INPUT     90.0f
+#define ANGLE_MIN_OUTPUT   -10000.0f
+#define ANGLE_MAX_OUTPUT    10000.0f
+
 Adafruit_MPU6050 mpu;
 BLEServer *pServer = NULL;
 BLECharacteristic *pCharacteristic = NULL;
@@ -28,19 +54,18 @@ float mapToRange(float value, float minInput, float maxInput, float minOutput, f
 // calibrating the gyroscope
 void calibrateGyro()
 {
-    int samples = 100;
-    for (int i = 0; i < samples; i++)
+    for (int i = 0; i < CALIBRATION_SAMPLES; i++)
     {
         sensors_event_t a, g, temp;
         mpu.getEvent(&a, &g, &temp);
         gyroXOffset += g.gyro.x;
         gyroYOffset += g.gyro.y;
         gyroZOffset += g.gyro.z;
-        delay(10);
+        delay(CALIBRATION_DELAY);
     }
-    gyroXOffset /= samples;
-    gyroYOffset /= samples;
-    gyroZOffset /= samples;
+    gyroXOffset /= CALIBRATION_SAMPLES;
+    gyroYOffset /= CALIBRATION_SAMPLES;
+    gyroZOffset /= CALIBRATION_SAMPLES;
     Serial.println("Gyro Calibration Complete!");
 }
 
@@ -63,23 +88,19 @@ class MyServerCallbacks : public BLEServerCallbacks
 
 void setup()
 {
-    Serial.begin(9600);
+    Serial.begin(SERIAL_BAUD_RATE);
 
     // init I2C
-    int sdaPin = 2;
-    int sclPin = 15;
-    Wire.begin(sdaPin, sclPin);
+    Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
 
     // init BLE
-    BLEDevice::init("ESP32_Gyro_Sender");
+    BLEDevice::init(BLE_DEVICE_NAME);
     pServer = BLEDevice::createServer();
     pServer->setCallbacks(new MyServerCallbacks());
 
-    BLEService *pService = pServer->createService("0000ffe0-0000-1000-8000-00805f9b34fb");
+    BLEService *pService = pServer->createService(BLE_SERVICE_UUID);
 
-    pCharacteristic = pService->createCharacteristic(
-        "0000ffe1-0000-1000-8000-00805f9b34fb",
-        BLECharacteristic::PROPERTY_NOTIFY);
+    pCharacteristic = pService->createCharacteristic(BLE_CHAR_UUID, BLECharacteristic::PROPERTY_NOTIFY);
 
     pService->start();
     BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
@@ -109,7 +130,7 @@ void loop()
     mpu.getEvent(&a, &g, &temp);
 
     unsigned long currentTime = millis();
-    float deltaTime = (currentTime - previousTime) / 1000.0;
+    float deltaTime = (currentTime - previousTime) / MS_CONVERT;
     previousTime = currentTime;
 
     // filter gyro data
@@ -123,8 +144,8 @@ void loop()
     angleY += gyroYFiltered * deltaTime;
 
     // map angles to a specific range
-    float angleXMapped = mapToRange(angleX, -90, 90, -10000, 10000);
-    float angleYMapped = mapToRange(angleY, -90, 90, -10000, 10000);
+    float angleXMapped = mapToRange(angleX, ANGLE_MIN_INPUT, ANGLE_MAX_INPUT, ANGLE_MIN_OUTPUT, ANGLE_MAX_OUTPUT);
+    float angleYMapped = mapToRange(angleY, ANGLE_MIN_INPUT, ANGLE_MAX_INPUT, ANGLE_MIN_OUTPUT, ANGLE_MAX_OUTPUT);
 
     // transmit data
     if (deviceConnected)
@@ -134,5 +155,5 @@ void loop()
         pCharacteristic->notify();
     }
 
-    delay(200);
+    delay(LOOP_DELAY);
 }
