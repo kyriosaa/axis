@@ -1,13 +1,16 @@
 <img src='./images/axis1.JPG' width='100%' >
 
-# Axis: A Gyroscope-Controlled RC Car
+# Axis
 
-🎥 [Watch the demo video](https://www.youtube.com/watch?v=8u_cHXa7rbY) 🎥
+[![C++](https://img.shields.io/badge/C%2B%2B-00599C?style=flat&logo=c%2B%2B&logoColor=white)](https://isocpp.org/)
+[![PlatformIO](https://img.shields.io/badge/PlatformIO-FF7F00?style=flat&logo=platformio&logoColor=white)](https://platformio.org/)
+[![Arduino](https://img.shields.io/badge/Arduino-00979D?style=flat&logo=arduino&logoColor=white)](https://www.arduino.cc/)
+[![ESP32](https://img.shields.io/badge/ESP32-000000?style=flat&logo=espressif&logoColor=white)](https://www.espressif.com/en/products/socs/esp32)
+[![Bluetooth](https://img.shields.io/badge/Bluetooth-0082FC?style=flat&logo=bluetooth&logoColor=white)](https://www.bluetooth.com/)
 
-## About
+Axis is a gyroscope-controlled RC car that utilizes gyroscopic data from an MPU6050 module and sends it via Bluetooth to an RC car.
 
-- Axis is a project I made that utilizes gyroscopic data from an MPU6050 module and sends it via Bluetooth to an RC car.
-- C++
+🎥 [Demo video](https://www.youtube.com/watch?v=8u_cHXa7rbY) 🎥
 
 ## Features
 
